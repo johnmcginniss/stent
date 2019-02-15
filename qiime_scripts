@@ -1,0 +1,54 @@
+# Extract barcodes
+extract_barcodes.py \
+--input_type barcode_paired_end \
+-f data_files/Undetermined_S0_L001_I1_001.fastq.gz \
+-r data_files/Undetermined_S0_L001_I2_001.fastq.gz \
+--bc1_len 12 \
+--bc2_len 12 \
+-o parsed_barcodes
+
+# Join paired ends
+join_paired_ends.py \
+-f data_files/Undetermined_S0_L001_R1_001.fastq.gz \
+-r data_files/Undetermined_S0_L001_R2_001.fastq.gz \
+-b parsed_barcodes/barcodes.fastq \
+--min_overlap 35 \
+--perc_max_diff 15 \
+-o data_files/qiime_joined
+
+# Demultiplex through split libraries script
+split_libraries_fastq.py \
+-i data_files/qiime_joined/fastqjoin.join.fastq \
+-b data_files/qiime_joined/fastqjoin.join_barcodes.fastq \
+-m stentmap_20170323.txt \
+-q 19 \
+-o library \
+--rev_comp_mapping_barcodes \
+--barcode_type golay_24 \
+--max_barcode_errors 2 
+
+# OTU picking
+pick_de_novo_otus.py \
+--input_fp library/seqs.fna \
+--output_dir otu \
+-p /home/ize /qiime_parameters.txt
+
+# Collapse three experimental replicates into one
+collapse_samples.py \
+-b otu/otu_table_keepers.biom \
+-m stentmap_20170417.txt \
+--output_biom_fp otu/otu_table_collapsed.biom \
+--output_mapping_fp stentmap_20170417_collapsed.txt \
+--collapse_mode sum \
+--collapse_fields SampleReplicateGroup
+
+# Convert biom to txt
+biom convert \
+-i otu/otu_table_collapsed.biom \
+-o otu/classic_otu_table.txt \
+--to-tsv \
+-m stentmap_20170417_collapsed.txt \
+--header-key=taxonomy \
+--output-metadata-id="Consensus Lineage" \
+--process-obs-metadata=taxonomy
+
