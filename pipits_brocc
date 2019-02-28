@@ -1,0 +1,33 @@
+# For fungal ITS sequencing we employed PIPITS for read joining, ITS sequence extraction, and OTU clustering
+# We then used BROCC for taxonomic assignment.
+# Below is the workflow used for the stent biofilm microbiome paper. For explanation and implementation please see the full documentation documents
+# PIPITS full documentation: https://github.com/eclarke/pipits
+# BROCC full documentation: https://github.com/kylebittinger/brocc
+
+## PIPITS
+# Obtain sample list from an input of per sample demultiplexed FASTQ files
+pipits_getreadpairslist -i ILLUMINA_DEMULTIPLEXED_FASTQ -o ReadPairList.txt
+
+# Run QC and read pairing
+pipits_prep -i ILLUMINA_DEMULTIPLEXED_FASTQ -o PIPITS_PREP -l ReadPairList.txt -t 16
+
+# Extract ITS sequences; -x parameter is the ITS region sequenced
+pipits_funits -i PIPITS_PREP/prepped.fasta -x ITS1 -p $HOME/miniconda3/envs/pipits/opt/ITSx_db/HMMs -t 18
+
+# By default, this uses the UNITE database.
+pipits_process -i PIPITS_FUNITS/ITS.fasta -t 18
+
+# OTU representative sequences at 97% identity
+muscle -maxiters 2 -in pipits_process/repseqs.fasta -out repseqs_aligned.fa
+
+# Phylogenetic tree
+fastTree -nt < repseqs_aligned.fa > repseqs_aligned.tre
+
+
+## BROCC
+# Run blast on representative sequences obtained from PIPITS above
+blastn -db LOCAL_BLAST_DB -query repseqs.fasta -out REP_SET_BLAST_NT.txt -evalue 1e-5 -outfmt 7 -max_target_seqs 100 -num_threads 10
+
+# Run BROCC
+brocc.py -i repseqs.fasta -b REP_SET_BLAST_NT.txt -o BROCC -a ITS
+
