@@ -1,54 +1,48 @@
+# Below is the worflow used for our stent biofilm microbiome manuscript
+# For full documentation of QIIME scripts see: http://qiime.org/scripts/
+
 # Extract barcodes
 extract_barcodes.py \
 --input_type barcode_paired_end \
--f data_files/Undetermined_S0_L001_I1_001.fastq.gz \
--r data_files/Undetermined_S0_L001_I2_001.fastq.gz \
+-f FORWARD_READS.fastq.gz \
+-r REVERSE_READS.fastq.gz \
 --bc1_len 12 \
 --bc2_len 12 \
--o parsed_barcodes
+-o PARSED_BARCODES
 
 # Join paired ends
 join_paired_ends.py \
--f data_files/Undetermined_S0_L001_R1_001.fastq.gz \
--r data_files/Undetermined_S0_L001_R2_001.fastq.gz \
--b parsed_barcodes/barcodes.fastq \
+-f FORWARD_READS.fastq.gz \
+-r REVERSE_READS.fastq.gz \
+-b PARSED_BARCODES/barcodes.fastq \
 --min_overlap 35 \
 --perc_max_diff 15 \
--o data_files/qiime_joined
+-o QIIME_JOINED
 
 # Demultiplex through split libraries script
 split_libraries_fastq.py \
--i data_files/qiime_joined/fastqjoin.join.fastq \
--b data_files/qiime_joined/fastqjoin.join_barcodes.fastq \
--m stentmap_20170323.txt \
+-i QIIME_JOINED/fastqjoin.join.fastq \
+-b QIIME_JOINED/fastqjoin.join_barcodes.fastq \
+-m MAPPING_FILE.txt \
 -q 19 \
--o library \
+-o LIBRARY \
 --rev_comp_mapping_barcodes \
 --barcode_type golay_24 \
 --max_barcode_errors 2 
 
-# OTU picking
+# OTU picking; qiime parameters file contains this line: 'pick_otus:enable_rev_strand_match True'
 pick_de_novo_otus.py \
---input_fp library/seqs.fna \
---output_dir otu \
--p /home/ize /qiime_parameters.txt
+--input_fp LIBRARY/seqs.fna \
+--output_dir OTU \
+-p QIIME_PARAMETERS.txt
 
 # Collapse three experimental replicates into one
 collapse_samples.py \
--b otu/otu_table_keepers.biom \
--m stentmap_20170417.txt \
---output_biom_fp otu/otu_table_collapsed.biom \
---output_mapping_fp stentmap_20170417_collapsed.txt \
+-b OTU/otu_table.biom \
+-m MAPPING_FILE.txt \
+--output_biom_fp OTU/otu_table_collapsed.biom \
+--output_mapping_fp sMAPPING_FILE_collapsed.txt \
 --collapse_mode sum \
 --collapse_fields SampleReplicateGroup
 
-# Convert biom to txt
-biom convert \
--i otu/otu_table_collapsed.biom \
--o otu/classic_otu_table.txt \
---to-tsv \
--m stentmap_20170417_collapsed.txt \
---header-key=taxonomy \
---output-metadata-id="Consensus Lineage" \
---process-obs-metadata=taxonomy
 
